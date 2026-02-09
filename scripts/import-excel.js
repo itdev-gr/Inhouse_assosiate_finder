@@ -2,12 +2,16 @@
  * Import professionals from an Excel (.xlsx or .xls) file into Firestore.
  * Uses the Excel "id" column as leadId: if a document with that ID exists, it is updated (merge);
  * otherwise a new document is created. Re-running the import updates existing rows (no duplicates).
- * Requires: GOOGLE_APPLICATION_CREDENTIALS pointing to a service account key JSON.
+ * Requires: GOOGLE_APPLICATION_CREDENTIALS pointing to a service account key JSON (can be in .env).
  * Usage: node scripts/import-excel.js <path-to-file.xlsx>
  * Dry run (no Firebase): node scripts/import-excel.js --dry-run <path-to-file.xlsx>
  */
 
+import dotenv from "dotenv";
+dotenv.config();
+
 import XLSX from "xlsx";
+import { createHash } from "crypto";
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { readFileSync, existsSync } from "fs";
@@ -74,7 +78,14 @@ function buildLocationSearch(location) {
 const COLUMN_MAPPING = [
 	{ excel: "id", firestore: "leadId" },
 	{ excel: "created_time", firestore: "createdAt" },
+	{ excel: "form_name", firestore: "formName" },
 	{ excel: "platform", firestore: "platform" },
+	{ excel: "instagram_ή_tiktok_user", firestore: "socialUrl" },
+	{ excel: "instagram_ή_tiktok_username", firestore: "socialUrl" },
+	{ excel: "followers_έχεις_περίπου", firestore: "followers" },
+	{ excel: "πόσους_followers_έχεις_περίπου", firestore: "followers" },
+	{ excel: "τι_είδους_content_δημιουργείς", firestore: "contentType" },
+	{ excel: "τι_είδους_content_δημιουργείς_κυρίως", firestore: "contentType" },
 	{ excel: "ποιος_είναι_ο_βασικός_σου_ρόλος", firestore: "mainRole" },
 	{ excel: "ποιος_είναι_ο_βασικός_σο", firestore: "mainRole" },
 	{ excel: "τι_είδους_συνεργασία_σε", firestore: "collaborationType" },
@@ -91,13 +102,16 @@ const COLUMN_MAPPING = [
 	{ excel: "επαγγελματικός_τίτλος", firestore: "category" },
 ];
 
-function normalizeCategory(value, mainRoleRaw) {
+function normalizeCategory(value, mainRoleRaw, formNameRaw) {
 	if (value == null || value === "") value = "";
 	const v = String(value).trim().toLowerCase();
 	const role = String(mainRoleRaw ?? "").trim().toLowerCase();
+	const formName = String(formNameRaw ?? "").trim().toLowerCase();
+	if (v === "influencer" || v.includes("influencer") || formName.includes("influencer")) return "influencer";
 	if (v === "videographer" || v === "βιντεογράφος" || v.includes("videographer") || v.includes("βιντεογράφ") || role.includes("videographer")) return "videographer";
 	if (v === "editor" || v === "συντακτης" || v === "συντακτής" || v.includes("editor") || v.includes("συντακτ") || role.includes("editor")) return "editor";
 	if (role.includes("videographer") && role.includes("editor")) return "videographer";
+	if (v === "model" || v.includes("model")) return "model";
 	return v || "videographer";
 }
 
@@ -107,13 +121,20 @@ function trimAndEmptyToUndefined(s) {
 	return t === "" ? undefined : t;
 }
 
+function stableLeadId(createdAt, email, name) {
+	const raw = [String(createdAt ?? ""), String(email ?? ""), String(name ?? "")].join("|");
+	return createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 16);
+}
+
 function buildColumnIndex(headers) {
 	const index = {};
 	for (let i = 0; i < headers.length; i++) {
 		const header = String(headers[i] ?? "").trim().replace(/[;?]$/, "");
 		for (const { excel, firestore } of COLUMN_MAPPING) {
 			const ex = excel.replace(/[;?]$/, "");
-			if (header === ex || header.startsWith(ex) || ex.startsWith(header) || header.includes(ex) || ex.includes(header)) {
+			const exactMatch = header === ex;
+			const looseMatch = header.startsWith(ex) || ex.startsWith(header) || header.includes(ex) || ex.includes(header);
+			if (ex === "id" ? exactMatch : looseMatch) {
 				index[firestore] = i;
 				break;
 			}
@@ -122,7 +143,7 @@ function buildColumnIndex(headers) {
 	return index;
 }
 
-function rowToDoc(row, colIndex) {
+function rowToDoc(row, colIndex, forcedCategory) {
 	const get = (field) => {
 		const i = colIndex[field];
 		return i !== undefined ? row[i] : undefined;
@@ -130,15 +151,21 @@ function rowToDoc(row, colIndex) {
 
 	const categoryRaw = get("category");
 	const mainRoleRaw = get("mainRole");
-	const category = normalizeCategory(categoryRaw, mainRoleRaw);
+	const formNameRaw = get("formName");
+	const category = forcedCategory || normalizeCategory(categoryRaw, mainRoleRaw, formNameRaw);
 	const location = trimAndEmptyToUndefined(get("location"));
 	const name = trimAndEmptyToUndefined(get("name"));
 
 	if (!name && !location && !category) return null;
 
 	const locationSearch = buildLocationSearch(location || "");
-	const leadIdRaw = get("leadId");
-	const leadId = leadIdRaw != null && String(leadIdRaw).trim() !== "" ? String(leadIdRaw).trim().replace(/\//g, "_") : undefined;
+	let leadIdRaw = get("leadId");
+	let leadId = leadIdRaw != null && String(leadIdRaw).trim() !== "" ? String(leadIdRaw).trim().replace(/\//g, "_") : undefined;
+	if (!leadId) {
+		const createdAt = get("createdAt");
+		const email = get("email");
+		leadId = "influencer_" + stableLeadId(createdAt, email, name);
+	}
 
 	const doc = {
 		...(leadId ? { leadId } : {}),
@@ -148,6 +175,7 @@ function rowToDoc(row, colIndex) {
 		locationSearch: locationSearch.length ? locationSearch : undefined,
 		bio: trimAndEmptyToUndefined(get("bio")),
 		portfolioUrl: trimAndEmptyToUndefined(get("portfolioUrl")),
+		socialUrl: trimAndEmptyToUndefined(get("socialUrl")),
 		phone: trimAndEmptyToUndefined(get("phone")),
 		email: trimAndEmptyToUndefined(get("email")),
 		createdAt: trimAndEmptyToUndefined(get("createdAt")),
@@ -155,6 +183,8 @@ function rowToDoc(row, colIndex) {
 		mainRole: trimAndEmptyToUndefined(get("mainRole")),
 		collaborationType: trimAndEmptyToUndefined(get("collaborationType")),
 		equipment: trimAndEmptyToUndefined(get("equipment")),
+		followers: trimAndEmptyToUndefined(get("followers")),
+		contentType: trimAndEmptyToUndefined(get("contentType")),
 	};
 
 	Object.keys(doc).forEach((k) => {
@@ -164,10 +194,13 @@ function rowToDoc(row, colIndex) {
 }
 
 async function main() {
-	const isDryRun = process.argv[2] === "--dry-run";
-	const filePath = isDryRun ? process.argv[3] : process.argv[2];
+	const argv = process.argv.slice(2);
+	const isDryRun = argv.includes("--dry-run");
+	const categoryArg = argv.find((a) => a.startsWith("--category="));
+	const forcedCategory = categoryArg ? categoryArg.split("=")[1] : null;
+	const filePath = argv.filter((a) => a !== "--dry-run" && !a.startsWith("--category="))[0];
 	if (!filePath) {
-		console.error("Usage: node scripts/import-excel.js [--dry-run] <path-to-file.xlsx>");
+		console.error("Usage: node scripts/import-excel.js [--dry-run] [--category=influencer] <path-to-file.xlsx>");
 		process.exit(1);
 	}
 
@@ -210,7 +243,7 @@ async function main() {
 
 	const docs = [];
 	for (let r = 1; r < rows.length; r++) {
-		const doc = rowToDoc(rows[r], colIndex);
+		const doc = rowToDoc(rows[r], colIndex, forcedCategory);
 		if (doc) docs.push(doc);
 	}
 

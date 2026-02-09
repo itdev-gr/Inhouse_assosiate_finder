@@ -107,6 +107,13 @@ service cloud.firestore {
 
 Μετά την εισαγωγή, τα δεδομένα εμφανίζονται στο dashboard με όλα τα πεδία (εξοπλισμός, portfolio, τηλέφωνο, email, κ.λπ.). Αν ξανατρέξεις το import με το ίδιο Excel, τα documents ενημερώνονται (ίδιο id → update). **Σημείωση:** Αν έχεις ήδη εισαγάγει δεδομένα χωρίς αυτή τη λογική (παλιά έκδοση), διαγράψτε το collection `professionals` στο Firestore Console και ξανατρέξτε το import ώστε όλα τα documents να πάρουν document ID = leadId· μετά κάθε νέο import θα κάνει μόνο updates.
 
+5. **Import influencers (XLS με διαφορετικά columns)**:
+   Για αρχείο leads influencers (π.χ. `influencer_Leads_*.xls`) χρησιμοποίησε `--category=influencer` ώστε όλες οι γραμμές να μπουν ως `category: "influencer"`. Αν το Excel δεν έχει column `id`, το script δημιουργεί αυτόματα `leadId` από hash (createdAt + email + name) ώστε το re-import να κάνει update.
+   ```bash
+   GOOGLE_APPLICATION_CREDENTIALS=./private/serviceAccountKey.json node scripts/import-excel.js --category=influencer /path/to/influencer_Leads_2026-01-05_2026-02-03.xls
+   ```
+   Υποστηριζόμενα columns (επιπλέον): `form_name`, `instagram_ή_tiktok_user` / `instagram_ή_tiktok_username` → socialUrl, `followers_έχεις_περίπου` / `πόσους_followers_έχεις_περίπου` → followers, `τι_είδους_content_δημιουργείς` / `τι_είδους_content_δημιουργείς_κυρίως` → contentType.
+
 ## Deploy στο Vercel
 
 1. **Σύνδεση με GitHub**: Πήγαινε στο [Vercel](https://vercel.com) και σύνδεσε το GitHub account. Επίλεξε **Add New** → **Project** και κάνε import το repository `itdev-gr/Inhouse_assosiate_finder`.

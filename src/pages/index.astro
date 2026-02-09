@@ -8,6 +8,9 @@
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 		<title>Associate Finder</title>
 	</head>
 	<body>
@@ -19,18 +22,10 @@
 			<section class="categories" aria-label="Επιλογή κατηγορίας">
 				<h2 class="section-label">Επιλέξτε κατηγορία</h2>
 				<div class="category-cards" id="category-cards">
-					<button type="button" class="category-card selected" data-category="videographer" id="cat-videographer">
-						Videographer
-					</button>
-					<button type="button" class="category-card" data-category="influencer" id="cat-influencer">
-						Influencer
-					</button>
-					<button type="button" class="category-card" data-category="model" id="cat-model">
-						Models
-					</button>
-					<button type="button" class="category-card" data-category="editor" id="cat-editor">
-						Editor
-					</button>
+					<button type="button" class="category-card selected" data-category="videographer">Videographer</button>
+					<button type="button" class="category-card" data-category="influencer">Influencer</button>
+					<button type="button" class="category-card" data-category="model">Models</button>
+					<button type="button" class="category-card" data-category="editor">Editor</button>
 				</div>
 			</section>
 
@@ -52,20 +47,28 @@
 				<div id="results-state" class="results-state" data-state="idle">
 					<p id="results-message" class="results-message">Επιλέξτε κατηγορία και τοποθεσία και πατήστε Αναζήτηση.</p>
 				</div>
+				<div id="results-header" class="results-header" hidden>
+					<p id="results-count" class="results-count"></p>
+				</div>
 				<ul id="results-list" class="results-list" hidden></ul>
 			</section>
 		</main>
 
 		<style>
 			:root {
-				--bg: #0f0f12;
-				--surface: #1a1a1f;
-				--border: #2d2d35;
-				--text: #e8e8ec;
-				--text-muted: #9a9aa5;
+				--bg: #ffffff;
+				--surface: #f9fafb;
+				--surface-elevated: #f3f4f6;
+				--border: #e5e7eb;
+				--text: #111827;
+				--text-muted: #6b7280;
 				--accent: #6366f1;
 				--accent-hover: #818cf8;
+				--accent-soft: rgba(99, 102, 241, 0.12);
 				--error: #f87171;
+				--teal: #0d9488;
+				--teal-hover: #0f766e;
+				--teal-soft: rgba(13, 148, 136, 0.12);
 			}
 
 			*,
@@ -76,8 +79,8 @@
 
 			body {
 				margin: 0;
-				font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-				background: var(--bg);
+				font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+				background: var(--surface);
 				color: var(--text);
 				min-height: 100vh;
 				line-height: 1.5;
@@ -200,6 +203,23 @@
 
 			.results-state[data-state="loading"] .results-message {
 				color: var(--text-muted);
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+			}
+
+			.results-state[data-state="loading"] .results-message::before {
+				content: "";
+				width: 1.25rem;
+				height: 1.25rem;
+				border: 2px solid var(--border);
+				border-top-color: var(--accent);
+				border-radius: 50%;
+				animation: spin 0.8s linear infinite;
+			}
+
+			@keyframes spin {
+				to { transform: rotate(360deg); }
 			}
 
 			.results-state[data-state="error"] .results-message {
@@ -211,80 +231,339 @@
 				font-size: 0.9375rem;
 			}
 
+			.results-header {
+				margin-bottom: 1rem;
+			}
+
+			.results-count {
+				margin: 0;
+				font-size: 0.9375rem;
+				font-weight: 600;
+				color: var(--text-muted);
+			}
+
 			.results-list {
 				list-style: none;
 				margin: 0;
 				padding: 0;
-				display: grid;
+				display: flex;
+				flex-direction: column;
+				gap: 2rem;
+			}
+
+			/* Global styles for dynamically injected result cards (Astro scopes skip client-rendered HTML) */
+			:global(.result-card) {
+				position: relative;
+				display: block;
+				padding: 1.5rem 1.75rem;
+				background: #ffffff;
+				border: 2px solid var(--border);
+				border-radius: 12px;
+				box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+				transition: box-shadow 0.2s, border-color 0.2s;
+				overflow: hidden;
+				animation: cardFadeIn 0.35s ease-out;
+				page-break-inside: avoid;
+			}
+
+			@keyframes cardFadeIn {
+				from {
+					opacity: 0;
+					transform: translateY(8px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			:global(.result-card:hover) {
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+			}
+
+			:global(.result-card .card-inner) {
+				display: flex;
+				flex-direction: column;
 				gap: 1rem;
 			}
 
-			.results-list:not([hidden]) {
-				display: grid;
+			:global(.result-card .card-compact) {
+				display: flex;
+				align-items: flex-start;
+				gap: 1rem;
 			}
 
-			.result-card {
-				padding: 1.25rem;
-				background: var(--surface);
-				border: 1px solid var(--border);
+			:global(.result-card .card-icon) {
+				flex-shrink: 0;
+				width: 48px;
+				height: 48px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: var(--teal);
 				border-radius: 10px;
+				color: white;
 			}
 
-			.result-card h3 {
-				margin: 0 0 0.25rem 0;
+			:global(.result-card .card-icon svg) {
+				display: block;
+			}
+
+			:global(.result-card .card-compact-body) {
+				flex: 1;
+				min-width: 0;
+			}
+
+			:global(.result-card .card-name) {
+				margin: 0 0 0.35rem 0;
 				font-size: 1.125rem;
-				font-weight: 600;
+				font-weight: 700;
+				color: var(--text);
+				letter-spacing: -0.02em;
+				line-height: 1.3;
 			}
 
-			.result-card .location {
-				font-size: 0.875rem;
+			:global(.result-card .card-description) {
+				margin: 0 0 0.75rem 0;
+				font-size: 0.9rem;
 				color: var(--text-muted);
+				line-height: 1.5;
+			}
+
+			:global(.result-card .card-cta) {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.35rem;
+				padding: 0;
+				background: none;
+				border: none;
+				font-size: 0.9375rem;
+				font-weight: 500;
+				color: var(--teal);
+				cursor: pointer;
+				font-family: inherit;
+				transition: color 0.2s, text-decoration 0.2s;
+			}
+
+			:global(.result-card .card-cta:hover) {
+				color: var(--teal-hover);
+				text-decoration: underline;
+			}
+
+			:global(.result-card .card-cta-arrow) {
+				font-size: 1rem;
+				transition: transform 0.2s;
+			}
+
+			:global(.result-card[data-expanded="true"] .card-cta-arrow) {
+				transform: rotate(90deg);
+			}
+
+			:global(.result-card .card-expanded) {
+				margin-top: 0.5rem;
+				padding-top: 1.25rem;
+				border-top: 1px solid var(--border);
+			}
+
+			:global(.result-card .card-fields-grid) {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 1rem 1.5rem;
+			}
+
+			:global(.result-card .card-col) {
+				display: flex;
+				flex-direction: column;
+				gap: 1rem;
+			}
+
+			@media (max-width: 560px) {
+				:global(.result-card .card-fields-grid) {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			:global(.result-card .field-group.full-width) {
+				width: 100%;
+			}
+
+			:global(.result-card .field-group) {
+				display: flex;
+				flex-direction: column;
+				gap: 0.4rem;
+				margin-bottom: 0;
+			}
+
+			:global(.result-card .field-label) {
+				display: block;
+				font-size: 0.9375rem;
+				font-weight: 700;
+				color: var(--text);
 				margin-bottom: 0.5rem;
 			}
 
-			.result-card .bio {
+			:global(.result-card .field-value) {
 				font-size: 0.9375rem;
 				color: var(--text);
-				margin: 0 0 0.75rem 0;
+				line-height: 1.5;
+				padding: 0.65rem 0.9rem;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
 			}
 
-			.result-card .meta {
-				font-size: 0.875rem;
-				color: var(--text-muted);
-				margin: 0 0 0.5rem 0;
-			}
-
-			.result-card .meta-label {
-				font-weight: 600;
+			:global(.result-card .field-value-text) {
+				font-size: 0.9375rem;
 				color: var(--text);
+				line-height: 1.6;
+				padding: 0.75rem;
+				background: var(--surface);
+				border-radius: 10px;
+				border: 1px solid var(--border);
 			}
 
-			.result-card .card-links {
+			:global(.result-card .field-input) {
+				width: 100%;
+				padding: 0.65rem 0.9rem;
+				background: #fff;
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				color: var(--text);
+				font-size: 0.9375rem;
+				font-family: inherit;
+			}
+
+			:global(.result-card .field-input:focus) {
+				outline: none;
+				border-color: var(--teal);
+			}
+
+			:global(.result-card .card-actions) {
 				display: flex;
 				flex-wrap: wrap;
 				gap: 0.5rem;
-				margin-top: 0.75rem;
+				margin-top: 1rem;
+				padding-top: 1rem;
+				border-top: 1px solid var(--border);
 			}
 
-			.result-card .card-links a {
-				display: inline-block;
-				padding: 0.35rem 0.75rem;
-				background: rgba(99, 102, 241, 0.2);
-				border-radius: 6px;
-				color: var(--accent);
-				text-decoration: none;
+			:global(.result-card .card-btn) {
+				padding: 0.5rem 1rem;
+				border-radius: 8px;
 				font-size: 0.875rem;
-				font-weight: 500;
+				font-weight: 600;
+				cursor: pointer;
+				border: none;
+				font-family: inherit;
+				transition: background 0.2s, color 0.2s;
 			}
 
-			.result-card .card-links a:hover {
-				background: rgba(99, 102, 241, 0.3);
+			:global(.result-card .card-btn-update) {
+				background: var(--teal-soft);
+				color: var(--teal);
+			}
+
+			:global(.result-card .card-btn-update:hover) {
+				background: rgba(13, 148, 136, 0.2);
+			}
+
+			:global(.result-card .card-btn-save) {
+				background: var(--teal);
+				color: white;
+			}
+
+			:global(.result-card .card-btn-save:hover) {
+				background: var(--teal-hover);
+			}
+
+			:global(.result-card .card-btn-cancel) {
+				background: var(--surface);
+				color: var(--text-muted);
+				border: 1px solid var(--border);
+			}
+
+			:global(.result-card .card-btn-cancel:hover) {
+				background: var(--border);
+			}
+
+			:global(.result-card .contact-section) {
+				display: flex;
+				flex-direction: column;
+				gap: 0.75rem;
+				margin-top: 0;
+				padding-top: 0;
+				border-top: none;
+			}
+
+			:global(.result-card .contact-section-title) {
+				font-size: 0.9375rem;
+				font-weight: 700;
+				color: var(--text);
+				margin-bottom: 0.75rem;
+			}
+
+			:global(.result-card .contact-grid) {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.75rem;
+			}
+
+			:global(.result-card .contact-chip) {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.5rem;
+				padding: 0.6rem 1rem;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				text-decoration: none;
+				color: var(--text);
+				font-size: 0.875rem;
+				transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+			}
+
+			:global(.result-card .contact-chip:hover) {
+				background: var(--accent-soft);
+				border-color: rgba(99, 102, 241, 0.3);
+				box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+			}
+
+			:global(.result-card .contact-chip-icon) {
+				flex-shrink: 0;
+				width: 1.75rem;
+				height: 1.75rem;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: var(--accent-soft);
+				border-radius: 8px;
+				color: var(--accent);
+				font-size: 0.8rem;
+			}
+
+			:global(.result-card .contact-chip-content) {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 0.1rem;
+			}
+
+			:global(.result-card .contact-chip-label) {
+				font-size: 0.7rem;
+				font-weight: 600;
+				color: var(--text-muted);
+				text-transform: uppercase;
+			}
+
+			:global(.result-card .contact-chip-value) {
+				font-weight: 500;
+				color: var(--accent);
 			}
 		</style>
 
 		<script>
-			import { collection, query, where, getDocs } from "firebase/firestore";
-			import { db } from "../lib/firebase";
+			import { collection, doc, query, where, getDocs, updateDoc } from "firebase/firestore";
+			import { db, firebaseProjectId } from "../lib/firebase";
 
 			// Same normalization as import script: Greek/Greeklish/English -> canonical search token
 			const GREEK_TO_LATIN: Record<string, string> = {
@@ -307,14 +586,23 @@
 				return out.replace(/\s+/g, " ").trim();
 			}
 
+			function buildLocationSearch(location: string): string[] {
+				if (!location || typeof location !== "string") return [];
+				const trimmed = location.trim();
+				if (!trimmed) return [];
+				const full = normalizeLocationToken(trimmed);
+				const words = trimmed.split(/[\s,]+/).map((w) => normalizeLocationToken(w)).filter(Boolean);
+				const seen = new Set<string>();
+				[full, ...words].forEach((t) => { if (t) seen.add(t); });
+				return [...seen];
+			}
+
 			type Professional = {
 				id: string;
 				name: string;
 				location: string;
 				category: string;
 				bio?: string;
-				imageUrl?: string;
-				contact?: string;
 				socialUrl?: string;
 				platform?: string;
 				mainRole?: string;
@@ -323,6 +611,8 @@
 				portfolioUrl?: string;
 				phone?: string;
 				email?: string;
+				createdAt?: string | { seconds?: number; nanoseconds?: number };
+				leadId?: string;
 			};
 
 			const categoryCards = document.getElementById("category-cards")!;
@@ -330,15 +620,21 @@
 			const searchBtn = document.getElementById("search-btn")!;
 			const resultsState = document.getElementById("results-state")!;
 			const resultsMessage = document.getElementById("results-message")!;
+			const resultsHeader = document.getElementById("results-header")!;
+			const resultsCount = document.getElementById("results-count")!;
 			const resultsList = document.getElementById("results-list") as HTMLUListElement;
 
 			let selectedCategory = "videographer";
 
-			function setState(state: "idle" | "loading" | "empty" | "results" | "error", message?: string) {
+			function setState(state: "idle" | "loading" | "empty" | "results" | "error", message?: string, count?: number) {
 				resultsState.dataset.state = state;
 				if (message !== undefined) resultsMessage.textContent = message;
 				resultsList.hidden = state !== "results";
 				resultsState.hidden = state === "results";
+				resultsHeader.hidden = state !== "results";
+				if (state === "results" && count !== undefined) {
+					resultsCount.textContent = count === 1 ? "Βρέθηκε 1 αποτέλεσμα" : `Βρέθηκαν ${count} αποτελέσματα`;
+				}
 			}
 
 			function categoryLabel(cat: string): string {
@@ -346,26 +642,84 @@
 				return labels[cat] || cat;
 			}
 
+			function field(label: string, value: string, type: "text" | "textarea" = "text", fullWidth = false, dataField?: string) {
+				const v = value == null || value === "" ? "" : escapeHtml(String(value));
+				const fw = fullWidth ? " full-width" : "";
+				const df = dataField ? ` data-field="${escapeHtml(dataField)}" data-type="${type}"` : "";
+				if (type === "textarea") {
+					return `<div class="field-group${fw}"${df}><span class="field-label">${escapeHtml(label)}</span><div class="field-value-text">${v}</div></div>`;
+				}
+				return `<div class="field-group${fw}"${df}><span class="field-label">${escapeHtml(label)}</span><div class="field-value">${v}</div></div>`;
+			}
+
+			function contactChip(icon: string, label: string, value: string, href: string, external = false) {
+				const v = escapeHtml(value);
+				const h = escapeHtml(href);
+				const ext = external ? ' target="_blank" rel="noopener"' : "";
+				return `<a class="contact-chip" href="${h}"${ext}><span class="contact-chip-icon">${icon}</span><span class="contact-chip-content"><span class="contact-chip-label">${escapeHtml(label)}</span><span class="contact-chip-value">${v}</span></span></a>`;
+			}
+
+			const PERSON_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+
+			function cardDescription(item: Professional): string {
+				const cat = item.category ? categoryLabel(item.category) : "";
+				const loc = item.location || "";
+				if (cat && loc) return `${cat} · ${loc}`;
+				if (loc) return loc;
+				if (cat) return cat;
+				const bio = (item.bio || "").trim();
+				return bio ? bio.slice(0, 80) + (bio.length > 80 ? "…" : "") : "";
+			}
+
 			function renderResults(items: Professional[]) {
 				resultsList.innerHTML = "";
 				for (const item of items) {
 					const portfolio = item.portfolioUrl || item.socialUrl;
-					const links = [];
-					if (item.phone) links.push(`<a href="tel:${escapeHtml(item.phone)}">Τηλέφωνο</a>`);
-					if (item.email) links.push(`<a href="mailto:${escapeHtml(item.email)}">Email</a>`);
-					if (portfolio) links.push(`<a href="${escapeHtml(portfolio)}" target="_blank" rel="noopener">Portfolio</a>`);
+					const isInfluencer = (item.category || "").toLowerCase() === "influencer";
+					const categoryLabelText = item.category ? categoryLabel(item.category) : "";
+					const description = cardDescription(item);
+					const nameField = field("Όνομα", item.name || "", "text", true, "name");
+					const leftCol = [
+						field("Κατηγορία", categoryLabelText || item.category || "", "text", false, "category"),
+						field("Τοποθεσία", item.location || "", "text", false, "location"),
+						field("Πλατφόρμα", item.platform || "", "text", false, "platform"),
+						field("Εξοπλισμός", item.equipment || "", "text", false, "equipment"),
+					].filter(Boolean);
+					const rightCol = [
+						field("Τύπος Συνεργασίας", item.collaborationType || "", "text", false, "collaborationType"),
+						field("Βασικός Ρόλος", item.mainRole || "", "text", false, "mainRole"),
+						isInfluencer ? field("Portfolio", portfolio || item.socialUrl || "", "text", false, "portfolioUrl") : "",
+					].filter(Boolean);
+					const gridLeft = leftCol.length ? `<div class="card-col">${leftCol.join("")}</div>` : "";
+					const gridRight = rightCol.length ? `<div class="card-col">${rightCol.join("")}</div>` : "";
+					const gridFields = gridLeft || gridRight ? `<div class="card-fields-grid">${gridLeft}${gridRight}</div>` : "";
+					const bioField = field("Περιγραφή / Bio", item.bio || "", "textarea", true, "bio");
+					const chips: string[] = [];
+					if (item.phone) chips.push(contactChip("☎", "Τηλέφωνο", item.phone, `tel:${item.phone}`));
+					if (item.email) chips.push(contactChip("✉", "Email", item.email, `mailto:${item.email}`));
+					if (!isInfluencer && portfolio) chips.push(contactChip("🔗", "Portfolio", portfolio.length > 45 ? portfolio.slice(0, 42) + "…" : portfolio, portfolio, true));
+					if (!isInfluencer && item.socialUrl && item.socialUrl !== portfolio) chips.push(contactChip("🔗", "Social", item.socialUrl.length > 45 ? item.socialUrl.slice(0, 42) + "…" : item.socialUrl, item.socialUrl, true));
+					const contactSection = chips.length ? `<div class="contact-section"><div class="contact-section-title">Στοιχεία επικοινωνίας</div><div class="contact-grid">${chips.join("")}</div></div>` : "";
+					const cardActions = `<div class="card-actions"><button type="button" class="card-btn card-btn-update">Ενημέρωση</button></div>`;
+					const expandedContent = `${nameField}${gridFields}${bioField}${contactSection}${cardActions}`;
+					const ctaBtn = expandedContent
+						? `<button type="button" class="card-cta" aria-expanded="false">Δες περισσότερα<span class="card-cta-arrow" aria-hidden="true">→</span></button>`
+						: "";
+					const cardCompact = `
+						<div class="card-icon" aria-hidden="true">${PERSON_ICON_SVG}</div>
+						<div class="card-compact-body">
+							<h3 class="card-name">${escapeHtml(item.name)}</h3>
+							${description ? `<p class="card-description">${escapeHtml(description)}</p>` : ""}
+							${ctaBtn}
+						</div>`;
+					const cardExpanded = expandedContent ? `<div class="card-expanded" hidden>${expandedContent}</div>` : "";
 					const li = document.createElement("li");
 					li.className = "result-card";
-					li.innerHTML = `
-						<h3>${escapeHtml(item.name)}</h3>
-						<p class="location">${escapeHtml(item.location)}${item.category ? ` · ${categoryLabel(item.category)}` : ""}</p>
-						${item.bio ? `<p class="bio">${escapeHtml(item.bio)}</p>` : ""}
-						${item.equipment ? `<p class="meta"><span class="meta-label">Εξοπλισμός:</span> ${escapeHtml(item.equipment)}</p>` : ""}
-						${item.collaborationType ? `<p class="meta"><span class="meta-label">Συνεργασία:</span> ${escapeHtml(item.collaborationType)}</p>` : ""}
-						${item.mainRole ? `<p class="meta"><span class="meta-label">Βασικός ρόλος:</span> ${escapeHtml(item.mainRole)}</p>` : ""}
-						${item.platform ? `<p class="meta"><span class="meta-label">Πλατφόρμα:</span> ${escapeHtml(item.platform)}</p>` : ""}
-						${links.length ? `<div class="card-links">${links.join("")}</div>` : ""}
-					`;
+					li.setAttribute("data-result-id", item.id);
+					li.setAttribute("data-expanded", "false");
+					if (item.phone != null && item.phone !== "") li.setAttribute("data-phone", String(item.phone));
+					if (item.email != null && item.email !== "") li.setAttribute("data-email", String(item.email));
+					li.innerHTML = `<article class="card-inner"><div class="card-compact">${cardCompact}</div>${cardExpanded}</article>`;
 					resultsList.appendChild(li);
 				}
 			}
@@ -384,11 +738,164 @@
 				btn.classList.add("selected");
 			});
 
+			resultsList.addEventListener("click", (e) => {
+				const target = e.target as HTMLElement;
+				const card = target.closest(".result-card");
+				if (!card) return;
+
+				const updateBtn = target.closest(".card-btn-update");
+				const saveBtn = target.closest(".card-btn-save");
+				const cancelBtn = target.closest(".card-btn-cancel");
+				if (updateBtn) {
+					enterEditMode(card as HTMLElement);
+					return;
+				}
+				if (saveBtn) {
+					saveEdit(card as HTMLElement);
+					return;
+				}
+				if (cancelBtn) {
+					cancelEdit(card as HTMLElement);
+					return;
+				}
+
+				const cta = target.closest(".card-cta");
+				if (!cta) return;
+				const expanded = card.getAttribute("data-expanded") === "true";
+				const expandedEl = card.querySelector(".card-expanded") as HTMLElement;
+				if (!expandedEl) return;
+				if (expanded) {
+					card.setAttribute("data-expanded", "false");
+					expandedEl.hidden = true;
+					cta.setAttribute("aria-expanded", "false");
+					cta.innerHTML = `Δες περισσότερα<span class="card-cta-arrow" aria-hidden="true">→</span>`;
+				} else {
+					card.setAttribute("data-expanded", "true");
+					expandedEl.hidden = false;
+					cta.setAttribute("aria-expanded", "true");
+					cta.innerHTML = `Λιγότερα<span class="card-cta-arrow" aria-hidden="true">→</span>`;
+				}
+			});
+
+			function enterEditMode(card: HTMLElement) {
+				const expandedEl = card.querySelector(".card-expanded") as HTMLElement;
+				if (!expandedEl) return;
+				card.setAttribute("data-expanded-html", expandedEl.innerHTML);
+
+				expandedEl.querySelectorAll(".field-group[data-field]").forEach((grp) => {
+					const fieldName = grp.getAttribute("data-field");
+					const type = (grp.getAttribute("data-type") || "text") as "text" | "textarea";
+					const valueEl = grp.querySelector(".field-value, .field-value-text");
+					if (!valueEl || !fieldName) return;
+					const value = (valueEl as HTMLElement).textContent ?? "";
+					const input = type === "textarea"
+						? document.createElement("textarea")
+						: document.createElement("input");
+					input.className = "field-input";
+					input.setAttribute("data-field", fieldName);
+					if (type === "text") (input as HTMLInputElement).type = "text";
+					input.value = value;
+					valueEl.replaceWith(input);
+				});
+
+				const contactSection = expandedEl.querySelector(".contact-section");
+				if (contactSection) {
+					const phone = card.getAttribute("data-phone") ?? "";
+					const email = card.getAttribute("data-email") ?? "";
+					contactSection.innerHTML = `
+						<div class="contact-section-title">Στοιχεία επικοινωνίας</div>
+						<div class="field-group" data-field="phone" data-type="text">
+							<span class="field-label">Τηλέφωνο</span>
+							<input class="field-input" data-field="phone" type="text" value="${escapeHtml(phone)}" />
+						</div>
+						<div class="field-group" data-field="email" data-type="text">
+							<span class="field-label">Email</span>
+							<input class="field-input" data-field="email" type="text" value="${escapeHtml(email)}" />
+						</div>`;
+				}
+
+				const actions = expandedEl.querySelector(".card-actions");
+				if (actions) {
+					actions.innerHTML = `<button type="button" class="card-btn card-btn-save">Αποθήκευση</button><button type="button" class="card-btn card-btn-cancel">Ακύρωση</button>`;
+				}
+			}
+
+			function cancelEdit(card: HTMLElement) {
+				const expandedEl = card.querySelector(".card-expanded") as HTMLElement;
+				const saved = card.getAttribute("data-expanded-html");
+				if (!expandedEl || !saved) return;
+				expandedEl.innerHTML = saved;
+				card.removeAttribute("data-expanded-html");
+			}
+
+			async function saveEdit(card: HTMLElement) {
+				const expandedEl = card.querySelector(".card-expanded") as HTMLElement;
+				const id = card.getAttribute("data-result-id");
+				if (!expandedEl || !id) return;
+
+				const updates: Record<string, string | string[] | undefined> = {};
+				expandedEl.querySelectorAll(".field-group[data-field] .field-input").forEach((el) => {
+					const fieldName = (el as HTMLElement).getAttribute("data-field");
+					if (!fieldName) return;
+					const value = (el as HTMLInputElement | HTMLTextAreaElement).value.trim();
+					updates[fieldName] = value || undefined;
+				});
+
+				const locationVal = updates.location;
+				if (locationVal !== undefined && typeof locationVal === "string") {
+					const tokens = buildLocationSearch(locationVal);
+					updates.locationSearch = tokens.length ? tokens : undefined;
+				}
+
+				const payload: Record<string, unknown> = {};
+				Object.entries(updates).forEach(([k, v]) => { if (v !== undefined) payload[k] = v; });
+
+				try {
+					const ref = doc(db, "professionals", id);
+					await updateDoc(ref, payload);
+				} catch (err) {
+					console.error("[Update] Error", err);
+					alert(err instanceof Error ? err.message : "Σφάλμα αποθήκευσης.");
+					return;
+				}
+
+				const savedHtml = card.getAttribute("data-expanded-html");
+				if (savedHtml) {
+					expandedEl.innerHTML = savedHtml;
+					Object.entries(updates).forEach(([key, val]) => {
+						if (val === undefined) return;
+						const grp = expandedEl.querySelector(`.field-group[data-field="${key}"]`);
+						if (!grp) return;
+						const valueEl = grp.querySelector(".field-value, .field-value-text");
+						if (valueEl) (valueEl as HTMLElement).textContent = String(val);
+					});
+					const contactSection = expandedEl.querySelector(".contact-section");
+					if (contactSection && (updates.phone !== undefined || updates.email !== undefined)) {
+						const phone = String(updates.phone ?? card.getAttribute("data-phone") ?? "");
+						const email = String(updates.email ?? card.getAttribute("data-email") ?? "");
+						const chips: string[] = [];
+						if (phone) chips.push(`<a class="contact-chip" href="tel:${escapeHtml(phone)}"><span class="contact-chip-icon">☎</span><span class="contact-chip-content"><span class="contact-chip-label">Τηλέφωνο</span><span class="contact-chip-value">${escapeHtml(phone)}</span></span></a>`);
+						if (email) chips.push(`<a class="contact-chip" href="mailto:${escapeHtml(email)}"><span class="contact-chip-icon">✉</span><span class="contact-chip-content"><span class="contact-chip-label">Email</span><span class="contact-chip-value">${escapeHtml(email)}</span></span></a>`);
+						const grid = contactSection.querySelector(".contact-grid");
+						if (grid) grid.innerHTML = chips.join("");
+					}
+				}
+				card.removeAttribute("data-expanded-html");
+				if (updates.phone !== undefined) card.setAttribute("data-phone", String(updates.phone));
+				else card.removeAttribute("data-phone");
+				if (updates.email !== undefined) card.setAttribute("data-email", String(updates.email));
+				else card.removeAttribute("data-email");
+				const nameEl = card.querySelector(".card-name");
+				if (nameEl && updates.name !== undefined) nameEl.textContent = String(updates.name);
+			}
+
 			searchBtn.addEventListener("click", async () => {
 				const locationRaw = locationInput.value.trim();
-				console.log("[Search] Started", { locationRaw, selectedCategory });
+				if (firebaseProjectId === undefined || firebaseProjectId === "") {
+					setState("error", "Firebase δεν είναι ρυθμισμένο. Δημιουργήστε αρχείο .env στη ρίζα του project με PUBLIC_FIREBASE_PROJECT_ID, PUBLIC_FIREBASE_API_KEY κ.λπ. (αντιγράψτε από .env.example) και κάντε restart το dev server (npm run dev).");
+					return;
+				}
 				if (!locationRaw) {
-					console.log("[Search] Aborted: empty location input");
 					setState("idle", "Εισάγετε τοποθεσία (π.χ. Athens, Αθήνα, argostoli).");
 					return;
 				}
@@ -397,9 +904,7 @@
 				resultsList.hidden = true;
 
 				const searchToken = normalizeLocationToken(locationRaw);
-				console.log("[Search] Normalized token", { searchToken });
 				if (searchToken === "") {
-					console.log("[Search] Aborted: empty token after normalize");
 					setState("idle", "Εισάγετε έγκυρη τοποθεσία.");
 					return;
 				}
@@ -411,23 +916,19 @@
 						where("category", "==", selectedCategory),
 						where("locationSearch", "array-contains", searchToken)
 					);
-					console.log("[Search] Primary query", { category: selectedCategory, locationSearch_contains: searchToken });
 					let snapshot = await getDocs(q);
 					let items: Professional[] = snapshot.docs.map((doc) => ({
 						id: doc.id,
 						...doc.data(),
 					})) as Professional[];
-					console.log("[Search] Primary result", { docsCount: snapshot.docs.length, firstDocId: snapshot.docs[0]?.id ?? null });
 
 					if (items.length === 0) {
-						console.log("[Search] Fallback: fetching by category only");
 						const qFallback = query(col, where("category", "==", selectedCategory));
 						snapshot = await getDocs(qFallback);
 						const allDocs: Professional[] = snapshot.docs.map((doc) => ({
 							id: doc.id,
 							...doc.data(),
 						})) as Professional[];
-						console.log("[Search] Fallback result", { allInCategory: allDocs.length });
 						const locNorm = (loc: string) => normalizeLocationToken(loc || "");
 						items = allDocs.filter((doc) => {
 							const loc = doc.location || "";
@@ -438,15 +939,12 @@
 								searchToken.includes(locNormed) ||
 								loc.toLowerCase().includes(locationRaw.toLowerCase());
 						});
-						console.log("[Search] Fallback filtered", { itemsCount: items.length });
 					}
 
 					if (items.length === 0) {
-						console.log("[Search] No results shown");
 						setState("empty", `Δεν βρέθηκαν αποτελέσματα για "${locationRaw}" στην κατηγορία που επιλέξατε. Δοκιμάστε Ελληνικά, Greeklish ή Αγγλικά.`);
 					} else {
-						console.log("[Search] Showing results", { itemsCount: items.length });
-						setState("results", "");
+						setState("results", "", items.length);
 						resultsList.hidden = false;
 						renderResults(items);
 					}
