@@ -627,6 +627,7 @@
 				collaborationType?: string;
 				equipment?: string;
 				portfolioUrl?: string;
+				contentType?: string;
 				phone?: string;
 				email?: string;
 				createdAt?: string | { seconds?: number; nanoseconds?: number };
@@ -707,6 +708,7 @@
 						field("Τύπος Συνεργασίας", item.collaborationType || "", "text", false, "collaborationType"),
 						field("Βασικός Ρόλος", item.mainRole || "", "text", false, "mainRole"),
 						isInfluencer ? field("Portfolio", portfolio || item.socialUrl || "", "text", false, "portfolioUrl") : "",
+						isInfluencer ? field("Τι είδους content δημιουργείς", item.contentType || "", "text", false, "contentType") : "",
 					].filter(Boolean);
 					const gridLeft = leftCol.length ? `<div class="card-col">${leftCol.join("")}</div>` : "";
 					const gridRight = rightCol.length ? `<div class="card-col">${rightCol.join("")}</div>` : "";
