@@ -28,6 +28,9 @@
 					<button type="button" class="category-card" data-category="model" id="cat-model">
 						Models
 					</button>
+					<button type="button" class="category-card" data-category="editor" id="cat-editor">
+						Editor
+					</button>
 				</div>
 			</section>
 
@@ -38,7 +41,7 @@
 						type="text"
 						id="location-input"
 						class="location-input"
-						placeholder="π.χ. Athens, Thessaloniki"
+						placeholder="π.χ. Athens, Αθήνα, argostoli, Κεφαλονιά"
 						autocomplete="off"
 					/>
 					<button type="button" class="search-btn" id="search-btn">Αναζήτηση</button>
@@ -242,13 +245,66 @@
 			.result-card .bio {
 				font-size: 0.9375rem;
 				color: var(--text);
-				margin: 0;
+				margin: 0 0 0.75rem 0;
+			}
+
+			.result-card .meta {
+				font-size: 0.875rem;
+				color: var(--text-muted);
+				margin: 0 0 0.5rem 0;
+			}
+
+			.result-card .meta-label {
+				font-weight: 600;
+				color: var(--text);
+			}
+
+			.result-card .card-links {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				margin-top: 0.75rem;
+			}
+
+			.result-card .card-links a {
+				display: inline-block;
+				padding: 0.35rem 0.75rem;
+				background: rgba(99, 102, 241, 0.2);
+				border-radius: 6px;
+				color: var(--accent);
+				text-decoration: none;
+				font-size: 0.875rem;
+				font-weight: 500;
+			}
+
+			.result-card .card-links a:hover {
+				background: rgba(99, 102, 241, 0.3);
 			}
 		</style>
 
 		<script>
 			import { collection, query, where, getDocs } from "firebase/firestore";
 			import { db } from "../lib/firebase";
+
+			// Same normalization as import script: Greek/Greeklish/English -> canonical search token
+			const GREEK_TO_LATIN: Record<string, string> = {
+				α: "a", β: "v", γ: "g", δ: "d", ε: "e", ζ: "z", η: "i", θ: "th", ι: "i", κ: "k", λ: "l", μ: "m",
+				ν: "n", ξ: "x", ο: "o", π: "p", ρ: "r", σ: "s", ς: "s", τ: "t", υ: "y", φ: "f", χ: "ch", ψ: "ps", ω: "o",
+				ά: "a", έ: "e", ή: "i", ί: "i", ό: "o", ύ: "y", ώ: "o", ϋ: "y", ΐ: "i", ΰ: "y",
+				Α: "a", Β: "v", Γ: "g", Δ: "d", Ε: "e", Ζ: "z", Η: "i", Θ: "th", Ι: "i", Κ: "k", Λ: "l", Μ: "m",
+				Ν: "n", Ξ: "x", Ο: "o", Π: "p", Ρ: "r", Σ: "s", Τ: "t", Υ: "y", Φ: "f", Χ: "ch", Ψ: "ps", Ω: "o",
+				Ά: "a", Έ: "e", Ή: "i", Ί: "i", Ό: "o", Ύ: "y", Ώ: "o", Ϊ: "i", Ϋ: "y",
+			};
+
+			function normalizeLocationToken(str: string): string {
+				if (!str || typeof str !== "string") return "";
+				let s = str.trim().toLowerCase().replace(/\s+/g, " ");
+				let out = "";
+				for (let i = 0; i < s.length; i++) {
+					out += GREEK_TO_LATIN[s[i]] ?? s[i];
+				}
+				return out.replace(/\s+/g, " ").trim();
+			}
 
 			type Professional = {
 				id: string;
@@ -259,6 +315,13 @@
 				imageUrl?: string;
 				contact?: string;
 				socialUrl?: string;
+				platform?: string;
+				mainRole?: string;
+				collaborationType?: string;
+				equipment?: string;
+				portfolioUrl?: string;
+				phone?: string;
+				email?: string;
 			};
 
 			const categoryCards = document.getElementById("category-cards")!;
@@ -277,15 +340,30 @@
 				resultsState.hidden = state === "results";
 			}
 
+			function categoryLabel(cat: string): string {
+				const labels: Record<string, string> = { videographer: "Videographer", editor: "Editor", influencer: "Influencer", model: "Models" };
+				return labels[cat] || cat;
+			}
+
 			function renderResults(items: Professional[]) {
 				resultsList.innerHTML = "";
 				for (const item of items) {
+					const portfolio = item.portfolioUrl || item.socialUrl;
+					const links = [];
+					if (item.phone) links.push(`<a href="tel:${escapeHtml(item.phone)}">Τηλέφωνο</a>`);
+					if (item.email) links.push(`<a href="mailto:${escapeHtml(item.email)}">Email</a>`);
+					if (portfolio) links.push(`<a href="${escapeHtml(portfolio)}" target="_blank" rel="noopener">Portfolio</a>`);
 					const li = document.createElement("li");
 					li.className = "result-card";
 					li.innerHTML = `
 						<h3>${escapeHtml(item.name)}</h3>
-						<p class="location">${escapeHtml(item.location)}</p>
+						<p class="location">${escapeHtml(item.location)}${item.category ? ` · ${categoryLabel(item.category)}` : ""}</p>
 						${item.bio ? `<p class="bio">${escapeHtml(item.bio)}</p>` : ""}
+						${item.equipment ? `<p class="meta"><span class="meta-label">Εξοπλισμός:</span> ${escapeHtml(item.equipment)}</p>` : ""}
+						${item.collaborationType ? `<p class="meta"><span class="meta-label">Συνεργασία:</span> ${escapeHtml(item.collaborationType)}</p>` : ""}
+						${item.mainRole ? `<p class="meta"><span class="meta-label">Βασικός ρόλος:</span> ${escapeHtml(item.mainRole)}</p>` : ""}
+						${item.platform ? `<p class="meta"><span class="meta-label">Πλατφόρμα:</span> ${escapeHtml(item.platform)}</p>` : ""}
+						${links.length ? `<div class="card-links">${links.join("")}</div>` : ""}
 					`;
 					resultsList.appendChild(li);
 				}
@@ -306,21 +384,23 @@
 			});
 
 			searchBtn.addEventListener("click", async () => {
-				const location = locationInput.value.trim();
-				if (!location) {
-					setState("idle", "Εισάγετε τοποθεσία (π.χ. Athens).");
+				const locationRaw = locationInput.value.trim();
+				if (!locationRaw) {
+					setState("idle", "Εισάγετε τοποθεσία (π.χ. Athens, Αθήνα, argostoli).");
 					return;
 				}
 
 				setState("loading", "Φόρτωση αποτελεσμάτων…");
 				resultsList.hidden = true;
 
+				const searchToken = normalizeLocationToken(locationRaw);
+
 				try {
 					const col = collection(db, "professionals");
 					const q = query(
 						col,
 						where("category", "==", selectedCategory),
-						where("location", "==", location)
+						where("locationSearch", "array-contains", searchToken)
 					);
 					const snapshot = await getDocs(q);
 					const items: Professional[] = snapshot.docs.map((doc) => ({
@@ -329,7 +409,7 @@
 					})) as Professional[];
 
 					if (items.length === 0) {
-						setState("empty", `Δεν βρέθηκαν αποτελέσματα για "${location}" στην κατηγορία που επιλέξατε.`);
+						setState("empty", `Δεν βρέθηκαν αποτελέσματα για "${locationRaw}" στην κατηγορία που επιλέξατε. Δοκιμάστε Ελληνικά, Greeklish ή Αγγλικά.`);
 					} else {
 						setState("results", "");
 						resultsList.hidden = false;
