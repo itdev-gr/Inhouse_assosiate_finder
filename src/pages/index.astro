@@ -395,6 +395,10 @@
 				resultsList.hidden = true;
 
 				const searchToken = normalizeLocationToken(locationRaw);
+				if (searchToken === "") {
+					setState("idle", "Εισάγετε έγκυρη τοποθεσία.");
+					return;
+				}
 
 				try {
 					const col = collection(db, "professionals");
@@ -403,11 +407,30 @@
 						where("category", "==", selectedCategory),
 						where("locationSearch", "array-contains", searchToken)
 					);
-					const snapshot = await getDocs(q);
-					const items: Professional[] = snapshot.docs.map((doc) => ({
+					let snapshot = await getDocs(q);
+					let items: Professional[] = snapshot.docs.map((doc) => ({
 						id: doc.id,
 						...doc.data(),
 					})) as Professional[];
+
+					if (items.length === 0) {
+						const qFallback = query(col, where("category", "==", selectedCategory));
+						snapshot = await getDocs(qFallback);
+						const allDocs: Professional[] = snapshot.docs.map((doc) => ({
+							id: doc.id,
+							...doc.data(),
+						})) as Professional[];
+						const locNorm = (loc: string) => normalizeLocationToken(loc || "");
+						items = allDocs.filter((doc) => {
+							const loc = doc.location || "";
+							const locNormed = locNorm(loc);
+							const arr = (doc as Professional & { locationSearch?: string[] }).locationSearch;
+							return (Array.isArray(arr) && arr.includes(searchToken)) ||
+								locNormed.includes(searchToken) ||
+								searchToken.includes(locNormed) ||
+								loc.toLowerCase().includes(locationRaw.toLowerCase());
+						});
+					}
 
 					if (items.length === 0) {
 						setState("empty", `Δεν βρέθηκαν αποτελέσματα για "${locationRaw}" στην κατηγορία που επιλέξατε. Δοκιμάστε Ελληνικά, Greeklish ή Αγγλικά.`);
