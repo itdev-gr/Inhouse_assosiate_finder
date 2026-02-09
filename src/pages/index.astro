@@ -386,7 +386,9 @@
 
 			searchBtn.addEventListener("click", async () => {
 				const locationRaw = locationInput.value.trim();
+				console.log("[Search] Started", { locationRaw, selectedCategory });
 				if (!locationRaw) {
+					console.log("[Search] Aborted: empty location input");
 					setState("idle", "Εισάγετε τοποθεσία (π.χ. Athens, Αθήνα, argostoli).");
 					return;
 				}
@@ -395,7 +397,9 @@
 				resultsList.hidden = true;
 
 				const searchToken = normalizeLocationToken(locationRaw);
+				console.log("[Search] Normalized token", { searchToken });
 				if (searchToken === "") {
+					console.log("[Search] Aborted: empty token after normalize");
 					setState("idle", "Εισάγετε έγκυρη τοποθεσία.");
 					return;
 				}
@@ -407,19 +411,23 @@
 						where("category", "==", selectedCategory),
 						where("locationSearch", "array-contains", searchToken)
 					);
+					console.log("[Search] Primary query", { category: selectedCategory, locationSearch_contains: searchToken });
 					let snapshot = await getDocs(q);
 					let items: Professional[] = snapshot.docs.map((doc) => ({
 						id: doc.id,
 						...doc.data(),
 					})) as Professional[];
+					console.log("[Search] Primary result", { docsCount: snapshot.docs.length, firstDocId: snapshot.docs[0]?.id ?? null });
 
 					if (items.length === 0) {
+						console.log("[Search] Fallback: fetching by category only");
 						const qFallback = query(col, where("category", "==", selectedCategory));
 						snapshot = await getDocs(qFallback);
 						const allDocs: Professional[] = snapshot.docs.map((doc) => ({
 							id: doc.id,
 							...doc.data(),
 						})) as Professional[];
+						console.log("[Search] Fallback result", { allInCategory: allDocs.length });
 						const locNorm = (loc: string) => normalizeLocationToken(loc || "");
 						items = allDocs.filter((doc) => {
 							const loc = doc.location || "";
@@ -430,16 +438,20 @@
 								searchToken.includes(locNormed) ||
 								loc.toLowerCase().includes(locationRaw.toLowerCase());
 						});
+						console.log("[Search] Fallback filtered", { itemsCount: items.length });
 					}
 
 					if (items.length === 0) {
+						console.log("[Search] No results shown");
 						setState("empty", `Δεν βρέθηκαν αποτελέσματα για "${locationRaw}" στην κατηγορία που επιλέξατε. Δοκιμάστε Ελληνικά, Greeklish ή Αγγλικά.`);
 					} else {
+						console.log("[Search] Showing results", { itemsCount: items.length });
 						setState("results", "");
 						resultsList.hidden = false;
 						renderResults(items);
 					}
 				} catch (err) {
+					console.error("[Search] Error", err);
 					const msg = err instanceof Error ? err.message : "Σφάλμα σύνδεσης. Ελέγξτε το .env και τα Firestore indexes.";
 					setState("error", msg);
 				}
