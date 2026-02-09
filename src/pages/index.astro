@@ -17,6 +17,7 @@
 		<main class="dashboard">
 			<header class="header">
 				<h1 class="title">Associate Finder</h1>
+				<a href="https://inhouse-assosiate-finder.vercel.app/" target="_blank" rel="noopener noreferrer" class="live-link">Άνοιγμα ζωντανής εφαρμογής ↗</a>
 			</header>
 
 			<section class="categories" aria-label="Επιλογή κατηγορίας">
@@ -93,6 +94,11 @@
 			}
 
 			.header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				flex-wrap: wrap;
+				gap: 1rem;
 				margin-bottom: 2.5rem;
 			}
 
@@ -101,6 +107,18 @@
 				font-weight: 700;
 				margin: 0;
 				letter-spacing: -0.02em;
+			}
+
+			.live-link {
+				font-size: 0.875rem;
+				font-weight: 500;
+				color: var(--teal);
+				text-decoration: none;
+			}
+
+			.live-link:hover {
+				text-decoration: underline;
+				color: var(--teal-hover);
 			}
 
 			.section-label {

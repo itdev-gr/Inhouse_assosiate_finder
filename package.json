@@ -2,6 +2,7 @@
   "name": "assosiate-finder",
   "type": "module",
   "version": "0.0.1",
+  "homepage": "https://inhouse-assosiate-finder.vercel.app/",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
