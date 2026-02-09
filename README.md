@@ -72,6 +72,29 @@ service cloud.firestore {
 
 Προσαρμόζεις αν χρησιμοποιείς authentication.
 
+## Deploy στο Vercel
+
+1. **Σύνδεση με GitHub**: Πήγαινε στο [Vercel](https://vercel.com) και σύνδεσε το GitHub account. Επίλεξε **Add New** → **Project** και κάνε import το repository `itdev-gr/Inhouse_assosiate_finder`.
+
+2. **Build ρυθμίσεις**: Το Vercel αναγνωρίζει αυτόματα Astro. Αφήστε:
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `.vercel/output/static` (ή αφήστε το default αν το προτείνει)
+   - **Install Command**: `npm install`
+
+3. **Environment Variables**: Πριν το πρώτο deploy, πρόσθεσε στο Vercel (Project → Settings → Environment Variables) όλες τις μεταβλητές από το `.env.example`:
+   - `PUBLIC_FIREBASE_API_KEY`
+   - `PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `PUBLIC_FIREBASE_PROJECT_ID`
+   - `PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `PUBLIC_FIREBASE_APP_ID`
+
+   Ορίστε τις για **Production** (και προαιρετικά Preview αν θέλετε τα ίδια σε PR previews).
+
+4. **Deploy**: Πατήστε **Deploy**. Μετά το build θα πάρεις ένα URL τύπου `https://inhouse-assosiate-finder-xxx.vercel.app`.
+
+Για επόμενα deploys, κάθε push στο `main` θα κάνει αυτόματα νέο deploy.
+
 ## Εντολές
 
 | Εντολή           | Λειτουργία                          |
