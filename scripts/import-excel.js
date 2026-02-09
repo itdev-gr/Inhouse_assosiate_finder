@@ -1,5 +1,7 @@
 /**
  * Import professionals from an Excel (.xlsx or .xls) file into Firestore.
+ * Uses the Excel "id" column as leadId: if a document with that ID exists, it is updated (merge);
+ * otherwise a new document is created. Re-running the import updates existing rows (no duplicates).
  * Requires: GOOGLE_APPLICATION_CREDENTIALS pointing to a service account key JSON.
  * Usage: node scripts/import-excel.js <path-to-file.xlsx>
  * Dry run (no Firebase): node scripts/import-excel.js --dry-run <path-to-file.xlsx>
@@ -42,7 +44,8 @@ const LOCATION_ALIASES = {
 
 function normalizeLocationToken(str) {
 	if (str == null || typeof str !== "string") return "";
-	let s = str.trim().toLowerCase().replace(/\s+/g, " ");
+	// Strip punctuation so "Λαμία!" and "Λαμία" both become "lamia"
+	let s = str.trim().toLowerCase().replace(/\s+/g, " ").replace(/[!?.,;:–—_'"()[\]{}]/g, " ");
 	let out = "";
 	for (let i = 0; i < s.length; i++) {
 		out += GREEK_TO_LATIN[s[i]] ?? s[i];
@@ -69,6 +72,7 @@ function buildLocationSearch(location) {
 }
 
 const COLUMN_MAPPING = [
+	{ excel: "id", firestore: "leadId" },
 	{ excel: "created_time", firestore: "createdAt" },
 	{ excel: "platform", firestore: "platform" },
 	{ excel: "ποιος_είναι_ο_βασικός_σου_ρόλος", firestore: "mainRole" },
@@ -133,8 +137,11 @@ function rowToDoc(row, colIndex) {
 	if (!name && !location && !category) return null;
 
 	const locationSearch = buildLocationSearch(location || "");
+	const leadIdRaw = get("leadId");
+	const leadId = leadIdRaw != null && String(leadIdRaw).trim() !== "" ? String(leadIdRaw).trim().replace(/\//g, "_") : undefined;
 
 	const doc = {
+		...(leadId ? { leadId } : {}),
 		category: category || "videographer",
 		location: location || "",
 		name: name || "",
@@ -215,11 +222,13 @@ async function main() {
 		const batch = db.batch();
 		const chunk = docs.slice(i, i + BATCH_SIZE);
 		chunk.forEach((doc) => {
-			batch.set(collection.doc(), doc);
+			const docId = doc.leadId ? String(doc.leadId) : null;
+			const ref = docId ? collection.doc(docId) : collection.doc();
+			batch.set(ref, doc, docId ? { merge: true } : {});
 		});
 		await batch.commit();
 		written += chunk.length;
-		console.log(`Written ${written}/${docs.length} documents.`);
+		console.log(`Written ${written}/${docs.length} documents (updates by leadId where present).`);
 	}
 
 	console.log("Import complete. Total documents written:", written);

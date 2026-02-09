@@ -298,7 +298,8 @@
 
 			function normalizeLocationToken(str: string): string {
 				if (!str || typeof str !== "string") return "";
-				let s = str.trim().toLowerCase().replace(/\s+/g, " ");
+				// Strip punctuation so "Λαμία!" and "Λαμία" both become "lamia"
+				let s = str.trim().toLowerCase().replace(/\s+/g, " ").replace(/[!?.,;:–—_'"()[\]{}]/g, " ");
 				let out = "";
 				for (let i = 0; i < s.length; i++) {
 					out += GREEK_TO_LATIN[s[i]] ?? s[i];

@@ -85,10 +85,13 @@ service cloud.firestore {
    GOOGLE_APPLICATION_CREDENTIALS=./private/serviceAccountKey.json node scripts/import-excel.js ./path/to/your-file.xlsx
    ```
 
-3. **Αντιστοίχιση columns**: Το script αναμένει την πρώτη σειρά του πρώτου sheet ως headers. Τα columns του Excel αντιστοιχίζονται στα πεδία Firestore ως εξής:
+3. **Update vs νέα εγγραφή**: Το script χρησιμοποιεί το column **id** του Excel ως `leadId`. Αν υπάρχει ήδη document με αυτό το ID στο Firestore, γίνεται **update** (merge)· αλλιώς δημιουργείται νέο. Έτσι μπορείς να ξανατρέχεις το import χωρίς διπλότυπα (τα υπάρχοντα ενημερώνονται).
+
+4. **Αντιστοίχιση columns**: Το script αναμένει την πρώτη σειρά του πρώτου sheet ως headers. Τα columns του Excel αντιστοιχίζονται στα πεδία Firestore ως εξής:
 
    | Excel column | Firestore field |
    |--------------|-----------------|
+   | id | leadId (χρησιμοποιείται ως Firestore document ID για update) |
    | επαγγελματικός_τίτλος | category (normalized: Videographer/Editor → videographer/editor) |
    | σε_ποια_πόλη_ή_περιοχή | location |
    | ονοματεπώνυμο | name |
@@ -102,7 +105,7 @@ service cloud.firestore {
    | τι_είδους_συνεργασία_σε | collaborationType |
    | τι_εξοπλισμό_χρησιμοποιεί | equipment |
 
-Μετά την εισαγωγή, τα δεδομένα εμφανίζονται στο dashboard με όλα τα πεδία (εξοπλισμός, portfolio, τηλέφωνο, email, κ.λπ.).
+Μετά την εισαγωγή, τα δεδομένα εμφανίζονται στο dashboard με όλα τα πεδία (εξοπλισμός, portfolio, τηλέφωνο, email, κ.λπ.). Αν ξανατρέξεις το import με το ίδιο Excel, τα documents ενημερώνονται (ίδιο id → update). **Σημείωση:** Αν έχεις ήδη εισαγάγει δεδομένα χωρίς αυτή τη λογική (παλιά έκδοση), διαγράψτε το collection `professionals` στο Firestore Console και ξανατρέξτε το import ώστε όλα τα documents να πάρουν document ID = leadId· μετά κάθε νέο import θα κάνει μόνο updates.
 
 ## Deploy στο Vercel
 
