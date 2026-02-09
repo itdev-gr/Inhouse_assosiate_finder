@@ -2,6 +2,8 @@
 
 Dashboard για αναζήτηση επαγγελματιών (Videographer, Influencer, Models) ανά τοποθεσία. Τα δεδομένα φιλοξενούνται στο Firebase Firestore.
 
+**Live:** [https://inhouse-assosiate-finder.vercel.app/](https://inhouse-assosiate-finder.vercel.app/)
+
 ## Ρύθμιση
 
 ### 1. Μεταβλητές περιβάλλοντος
@@ -133,7 +135,7 @@ service cloud.firestore {
 
    Ορίστε τις για **Production** (και προαιρετικά Preview αν θέλετε τα ίδια σε PR previews).
 
-4. **Deploy**: Πατήστε **Deploy**. Μετά το build θα πάρεις ένα URL τύπου `https://inhouse-assosiate-finder-xxx.vercel.app`.
+4. **Deploy**: Πατήστε **Deploy**. Η εφαρμογή είναι live στο [https://inhouse-assosiate-finder.vercel.app/](https://inhouse-assosiate-finder.vercel.app/).
 
 Για επόμενα deploys, κάθε push στο `main` θα κάνει αυτόματα νέο deploy.
 
